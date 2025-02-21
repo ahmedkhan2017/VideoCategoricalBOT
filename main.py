@@ -30,6 +30,13 @@ from langchain import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
+# Debug: Check if API key is loaded (remove or comment out in production)
+print("Loaded API Key:", os.environ.get("OPENAI_API_KEY"))
+
 # Check if GPU is available
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using device: {device}")
@@ -53,7 +60,7 @@ app.add_middleware(
 llm = ChatOpenAI(
     temperature=0,
     model="meta-llama/llama-3-8b-instruct:free",
-    openai_api_key="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",
+    openai_api_key=os.environ.get("OPENAI_API_KEY"),
     base_url="https://openrouter.ai/api/v1"
 )
 
@@ -331,15 +338,17 @@ async def get_transcript(category: str, filename: str):
 async def list_categories():
     return JSONResponse(content={"categories": CATEGORIES})
 
-# Function to start the FastAPI app
+# Function to start the FastAPI app with a dynamic port
 def start_fastapi():
-    uvicorn.run(app, host="0.0.0.0", port=8530)
+    port = int(os.environ.get("PORT", 8530))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
-# Expose the app using NGROK (for Colab or external access)
+# Expose the app using NGROK (for Colab or external access) with a dynamic port
 def expose_with_ngrok():
-    NGROK_AUTH_TOKEN = "2sToKHXPVpV45CWcvpIu7o0Xzf7_2cJoBvwQQj7UmyEJ3z2jG"  # Replace if needed
+    NGROK_AUTH_TOKEN = os.environ.get("NGROK_AUTH_TOKEN", "2sToKHXPVpV45CWcvpIu7o0Xzf7_2cJoBvwQQj7UmyEJ3z2jG")
     ngrok.set_auth_token(NGROK_AUTH_TOKEN)
-    public_url = ngrok.connect(8530)
+    port = int(os.environ.get("PORT", 8530))
+    public_url = ngrok.connect(port)
     print(f"Public URL: {public_url}")
 
 # Start FastAPI in a background thread and expose it via NGROK
