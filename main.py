@@ -27,14 +27,14 @@ except ImportError:
 
 import speech_recognition as sr
 from langchain import PromptTemplate
-from langchain.chains import LLMChain
+# Removed deprecated LLMChain import
 from langchain.chat_models import ChatOpenAI
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
 load_dotenv()
 
-# Debug: Check if API key is loaded (remove or comment out in production)
+# Debug: Check if API key is loaded (remove in production)
 print("Loaded API Key:", os.environ.get("OPENAI_API_KEY"))
 
 # Check if GPU is available
@@ -125,13 +125,11 @@ async def upload_video(
     if category not in CATEGORIES:
         raise HTTPException(status_code=400, detail=f"Invalid category. Choose from {CATEGORIES}")
     try:
-        # Generate a unique filename for the video
         unique_filename = get_unique_filename(file.filename)
         video_path = os.path.join("videos", category, unique_filename)
         with open(video_path, "wb") as buffer:
             buffer.write(await file.read())
 
-        # Create metadata file in the text folder of the same category
         metadata_filename = unique_filename.replace(".mp4", "_metadata.txt")
         metadata_path = os.path.join("text", category, metadata_filename)
         with open(metadata_path, "w", encoding="utf-8") as metadata_file:
@@ -139,7 +137,6 @@ async def upload_video(
             metadata_file.write(f"Description: {description}\n")
             metadata_file.write(f"Date: {date}\n")
 
-        # Extract transcript from the video and save it
         transcript = extract_text_from_video(video_path, category)
 
         with open(metadata_path, "a", encoding="utf-8") as metadata_file:
@@ -212,28 +209,24 @@ async def chat_with_bot(category: str, query: str):
     if category not in CATEGORIES:
         raise HTTPException(status_code=400, detail=f"Invalid category. Choose from {CATEGORIES}")
     try:
-        # List transcript files in the specific category folder
         transcript_dir = os.path.join("text", category)
         transcript_files = [f for f in os.listdir(transcript_dir) if f.endswith(".txt")]
         if not transcript_files:
             raise HTTPException(status_code=404, detail=f"No transcripts found for category: {category}")
-
-        # Use only the latest transcript file (based on modification time)
         latest_file = max(transcript_files, key=lambda f: os.path.getmtime(os.path.join(transcript_dir, f)))
         transcript_path = os.path.join(transcript_dir, latest_file)
         with open(transcript_path, "r", encoding="utf-8") as f:
             transcript = f.read()
 
-        # Build the prompt using only the latest transcript
         template = f"""You are an AI assistant specialized in {category} topics.
 Context from the transcript:
 {{context_data}}
 Based on the above, answer the following question: {query}
 Provide a detailed and relevant response:"""
         prompt = PromptTemplate.from_template(template)
-        chain = LLMChain(llm=llm, prompt=prompt)
+        formatted_prompt = prompt.format(context_data=transcript)
         try:
-            response = chain.run({'context_data': transcript})
+            response = llm.invoke(formatted_prompt)
         except Exception as e:
             print(f"Error generating AI response: {str(e)}")
             response = "Error generating AI response, please try again later."
@@ -258,9 +251,9 @@ Context from the transcript:
 Based on the above, answer the following question: {query}
 Provide a detailed and relevant response:"""
         prompt = PromptTemplate.from_template(template)
-        chain = LLMChain(llm=llm, prompt=prompt)
+        formatted_prompt = prompt.format(context_data=transcript)
         try:
-            response = chain.run({'context_data': transcript})
+            response = llm.invoke(formatted_prompt)
         except Exception as e:
             print(f"Error generating AI response: {str(e)}")
             response = "Error generating AI response, please try again later."
