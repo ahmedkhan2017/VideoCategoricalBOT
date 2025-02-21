@@ -11,4 +11,4 @@ pyngrok
 torch
 #faster-whisper
 python-multipart
- 
+openai 
