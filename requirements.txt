@@ -1,0 +1,14 @@
+SpeechRecognition
+moviepy
+pdfplumber
+pandas
+langchain
+langchain-community
+fastapi
+nest_asyncio
+uvicorn
+pyngrok
+torch
+#faster-whisper
+python-multipart
+ 

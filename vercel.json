@@ -1,0 +1,15 @@
+{
+    "builds": [
+      {
+        "src": "video-categorical-bot-be/main.py",
+        "use": "@vercel/python"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/(.*)",
+        "dest": "video-categorical-bot-be/main.py"
+      }
+    ]
+  }
+  
