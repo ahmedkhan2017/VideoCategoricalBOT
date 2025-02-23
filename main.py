@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Final backend code for Video Categorical Bot
-Is code mein har category ke liye alag directories use ho rahi hain.
-Uploaded video ka file name ab unique banane ke liye timestamp add kiya gaya hai.
-Chat endpoint (/chat/{category}) ab sirf us category ke latest video transcript
-ko use karega response generate karne ke liye.
+Final backend code for Video Categorical Bot.
+Each category uses its own directories.
+The uploaded video’s filename is made unique by appending a timestamp.
+The chat endpoint (/chat/{category}) uses only the latest video transcript of that category.
 """
 
 import os
@@ -18,6 +17,8 @@ import nest_asyncio
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+
+# Only import ngrok if needed (will only be used when USE_NGROK is true)
 from pyngrok import ngrok
 
 try:
@@ -27,14 +28,13 @@ except ImportError:
 
 import speech_recognition as sr
 from langchain import PromptTemplate
-# Removed deprecated LLMChain import
 from langchain.chat_models import ChatOpenAI
 
-# Load environment variables from .env file
+# Load environment variables from .env file (if running locally)
 from dotenv import load_dotenv
 load_dotenv()
 
-# Debug: Check if API key is loaded (remove in production)
+# Debug: Check if API key is loaded (remove or adjust for production)
 print("Loaded API Key:", os.environ.get("OPENAI_API_KEY"))
 
 # Check if GPU is available
@@ -56,12 +56,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize LangChain components (using OpenRouter as base_url)
+# Initialize LangChain components using environment variables
 llm = ChatOpenAI(
     temperature=0,
     model="meta-llama/llama-3-8b-instruct:free",
     openai_api_key=os.environ.get("OPENAI_API_KEY"),
-    base_url="https://openrouter.ai/api/v1"
+    base_url=os.environ.get("BASE_URL", "https://openrouter.ai/api/v1")
 )
 
 # Define allowed categories
@@ -331,20 +331,33 @@ async def get_transcript(category: str, filename: str):
 async def list_categories():
     return JSONResponse(content={"categories": CATEGORIES})
 
-# Function to start the FastAPI app with a dynamic port
+# Function to start the FastAPI app
 def start_fastapi():
     port = int(os.environ.get("PORT", 8530))
     uvicorn.run(app, host="0.0.0.0", port=port)
 
-# Expose the app using NGROK (for Colab or external access) with a dynamic port
+# Function to expose the app using ngrok (only used when USE_NGROK is set to true)
 def expose_with_ngrok():
-    NGROK_AUTH_TOKEN = os.environ.get("NGROK_AUTH_TOKEN", "2sToKHXPVpV45CWcvpIu7o0Xzf7_2cJoBvwQQj7UmyEJ3z2jG")
-    ngrok.set_auth_token(NGROK_AUTH_TOKEN)
-    port = int(os.environ.get("PORT", 8530))
-    public_url = ngrok.connect(port)
-    print(f"Public URL: {public_url}")
+    NGROK_AUTH_TOKEN = os.environ.get("NGROK_AUTH_TOKEN")
+    if NGROK_AUTH_TOKEN:
+        ngrok.set_auth_token(NGROK_AUTH_TOKEN)
+        port = int(os.environ.get("PORT", 8530))
+        public_url = ngrok.connect(port)
+        print(f"Public URL via ngrok: {public_url}")
+    else:
+        print("NGROK_AUTH_TOKEN not set. Skipping ngrok exposure.")
 
-# Start FastAPI in a background thread and expose it via NGROK
-thread = Thread(target=start_fastapi)
-thread.start()
-expose_with_ngrok()
+if __name__ == "__main__":
+    # Determine whether to use ngrok based on the USE_NGROK environment variable.
+    use_ngrok = os.environ.get("USE_NGROK", "false").lower() in ("true", "1", "yes")
+    if use_ngrok:
+        # Start uvicorn in a separate thread and expose via ngrok.
+        server_thread = Thread(target=start_fastapi, daemon=True)
+        server_thread.start()
+        expose_with_ngrok()
+        # Keep the main thread alive.
+        server_thread.join()
+    else:
+        # For Railway deployment (or normal production), just run uvicorn.
+        port = int(os.environ.get("PORT", 8530))
+        uvicorn.run(app, host="0.0.0.0", port=port)
