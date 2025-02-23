@@ -17,8 +17,6 @@ import nest_asyncio
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-
-# Only import ngrok if needed (will only be used when USE_NGROK is true)
 from pyngrok import ngrok
 
 try:
@@ -28,7 +26,8 @@ except ImportError:
 
 import speech_recognition as sr
 from langchain import PromptTemplate
-from langchain.chat_models import ChatOpenAI
+# Updated import: Use the updated ChatOpenAI from the langchain_openai package
+from langchain_openai import ChatOpenAI
 
 # Load environment variables from .env file (if running locally)
 from dotenv import load_dotenv
