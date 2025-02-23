@@ -9,6 +9,6 @@ nest_asyncio
 uvicorn
 pyngrok
 torch
-#faster-whisper
 python-multipart
-openai 
+openai
+python-dotenv
