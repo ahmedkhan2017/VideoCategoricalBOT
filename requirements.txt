@@ -12,3 +12,4 @@ torch
 python-multipart
 openai
 python-dotenv
+langchain-openai
