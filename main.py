@@ -26,15 +26,20 @@ except ImportError:
 
 import speech_recognition as sr
 from langchain import PromptTemplate
-# Updated import: Use the updated ChatOpenAI from the langchain_openai package
+# Updated import: use ChatOpenAI from langchain_openai package.
 from langchain_openai import ChatOpenAI
 
 # Load environment variables from .env file (if running locally)
 from dotenv import load_dotenv
 load_dotenv()
 
-# Debug: Check if API key is loaded (remove or adjust for production)
-print("Loaded API Key:", os.environ.get("OPENAI_API_KEY"))
+# Check that the OPENAI_API_KEY is provided
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY environment variable is not set. Please set it in your Railway project settings or .env file.")
+
+# Debug: Print a masked API key for verification (remove in production)
+print("Loaded API Key:", OPENAI_API_KEY[:4] + "****" if OPENAI_API_KEY else "None")
 
 # Check if GPU is available
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -55,11 +60,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize LangChain components using environment variables
+# Initialize LangChain components using environment variables.
 llm = ChatOpenAI(
     temperature=0,
     model="meta-llama/llama-3-8b-instruct:free",
-    openai_api_key=os.environ.get("OPENAI_API_KEY"),
+    openai_api_key=OPENAI_API_KEY,
     base_url=os.environ.get("BASE_URL", "https://openrouter.ai/api/v1")
 )
 
