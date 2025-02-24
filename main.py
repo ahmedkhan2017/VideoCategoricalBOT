@@ -13,11 +13,9 @@ from threading import Thread
 
 import torch
 import uvicorn
-import nest_asyncio
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pyngrok import ngrok
 
 try:
     from moviepy.editor import VideoFileClip
@@ -32,24 +30,21 @@ from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 load_dotenv()
 
-# Check that the OPENAI_API_KEY is provided
+# Get API Key from Environment Variables
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
-    raise ValueError("OPENAI_API_KEY environment variable is not set. Please set it in your Railway project settings or .env file.")
+    raise ValueError("OPENAI_API_KEY is not set. Please set it in Railway project settings or .env file.")
 
-print("Loaded API Key:", OPENAI_API_KEY[:4] + "****" if OPENAI_API_KEY else "None")
+print("Loaded API Key:", OPENAI_API_KEY[:4] + "****")
 
 # Check if GPU is available
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using device: {device}")
 
-# Apply nest_asyncio for running async tasks in Jupyter/Colab
-nest_asyncio.apply()
-
 # Initialize FastAPI app
 app = FastAPI()
 
-# Enable CORS (adjust for production)
+# Enable CORS (for frontend compatibility)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -140,26 +135,9 @@ async def list_categories():
     return JSONResponse(content={"categories": CATEGORIES})
 
 def start_fastapi():
-    port = int(os.environ.get("PORT", 8530))
+    """Start FastAPI server on port 8080 (required for Railway)."""
+    port = int(os.environ.get("PORT", 8080))  # Always use port 8080 for Railway
     uvicorn.run(app, host="0.0.0.0", port=port)
 
-def expose_with_ngrok():
-    NGROK_AUTH_TOKEN = os.environ.get("NGROK_AUTH_TOKEN")
-    if NGROK_AUTH_TOKEN:
-        ngrok.set_auth_token(NGROK_AUTH_TOKEN)
-        port = int(os.environ.get("PORT", 8530))
-        public_url = ngrok.connect(port)
-        print(f"Public URL via ngrok: {public_url}")
-    else:
-        print("NGROK_AUTH_TOKEN not set. Skipping ngrok exposure.")
-
 if __name__ == "__main__":
-    use_ngrok = os.environ.get("USE_NGROK", "false").lower() in ("true", "1", "yes")
-    if use_ngrok:
-        server_thread = Thread(target=start_fastapi, daemon=True)
-        server_thread.start()
-        expose_with_ngrok()
-        server_thread.join()
-    else:
-        port = int(os.environ.get("PORT", 8530))
-        uvicorn.run(app, host="0.0.0.0", port=port)
+    start_fastapi()
